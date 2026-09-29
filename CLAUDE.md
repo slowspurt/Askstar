@@ -6,7 +6,7 @@ This file contains project-specific information and commands for Claude Code to 
 - **Name**: Askstar
 - **Type**: Web Application
 - **Framework**: React with TypeScript
-- **Deployment**: Firebase
+- **Deployment**: Vercel static portfolio demo
 
 ## Development Commands
 ```bash
@@ -37,5 +37,6 @@ npm run typecheck
 
 ## Notes
 - Main branch: `main`
-- Firebase hosting configured
+- Vercel routes configured in `vercel.json`; normal builds use archived local data
+- Legacy Firebase files are retained for reference, not used by the portfolio app
 - Articles data stored in `public/data/articles.json`

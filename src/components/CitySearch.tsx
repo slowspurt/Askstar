@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface CitySearchProps {
   value: string;
@@ -51,40 +52,52 @@ const CitySearch: React.FC<CitySearchProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<CityResult[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const { currentLanguage } = useTranslation();
+  const isKorean = currentLanguage === 'ko';
+  const [searchError, setSearchError] = useState('');
+  const requestVersion = useRef(0);
+  const lastRequestAt = useRef(0);
+  const resultCache = useRef(new Map<string, CityResult[]>());
+  const requestInFlight = useRef(false);
 
   // Nominatim API URL
   const NOMINATIM_API = 'https://nominatim.openstreetmap.org/search';
 
-  // Handle input change with debounce
+  // Search local Seoul data while typing; external queries require an explicit action.
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
-    
-    // Call onInputChange prop if provided to track user attempt
-    if (onInputChange) {
-      onInputChange();
-    }
-    
-    // Clear previous timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    
-    // Set new timer for debounce (500ms)
-    if (newValue.trim().length > 1) {
-      setIsLoading(true);
-      debounceTimerRef.current = setTimeout(() => {
-        searchCity(newValue);
-      }, 500);
-    } else {
-      setResults([]);
-      setIsLoading(false);
-    }
+    requestVersion.current += 1;
+    setSearchError('');
+    setIsLoading(false);
+    onInputChange?.();
+    const isSeoul = /^(서울|seoul)$/i.test(newValue.trim());
+    setResults(isSeoul ? [{
+      city: isKorean ? '서울' : 'Seoul',
+      country: isKorean ? '대한민국' : 'South Korea',
+      latitude: 37.5665,
+      longitude: 126.9780,
+      formattedAddress: isKorean ? '서울, 대한민국' : 'Seoul, South Korea'
+    }] : []);
+    setIsOpen(isSeoul);
   };
 
   // Search city using Nominatim API
   const searchCity = async (query: string) => {
+    query = query.trim();
+    if (query.length < 2 || requestInFlight.current) return;
+    const cached = resultCache.current.get(query);
+    if (cached) {
+      setResults(cached);
+      setIsOpen(cached.length > 0);
+      return;
+    }
+    if (Date.now() - lastRequestAt.current < 1100) return;
+    lastRequestAt.current = Date.now();
+    requestInFlight.current = true;
+    const version = ++requestVersion.current;
+    setIsLoading(true);
+    setSearchError('');
     try {
       // Build the URL with parameters
       const params = new URLSearchParams({
@@ -96,8 +109,7 @@ const CitySearch: React.FC<CitySearchProps> = ({
       
       const response = await fetch(`${NOMINATIM_API}?${params.toString()}`, {
         headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Askstar_App/1.0' // Required by Nominatim usage policy
+          'Accept': 'application/json' // The browser sends the site Referer.
         }
       });
       
@@ -127,17 +139,27 @@ const CitySearch: React.FC<CitySearchProps> = ({
         )
         .filter((result: CityResult) => result.city); // Only include results with a city name
       
+      resultCache.current.set(query, processedResults);
+      if (version !== requestVersion.current) return;
       setResults(processedResults);
+      setIsOpen(processedResults.length > 0);
+      if (!processedResults.length) setSearchError(isKorean ? '도시를 찾지 못했어요. 다른 이름으로 검색해보세요.' : 'No cities found. Try another name.');
     } catch (error) {
       console.error('Error searching city:', error);
+      if (version !== requestVersion.current) return;
       setResults([]);
+      setSearchError(isKorean ? '도시 검색에 연결하지 못했어요. 잠시 후 다시 시도하거나 서울을 입력해 체험해보세요.' : 'City search is unavailable. Try again later, or enter Seoul to try the demo.');
     } finally {
-      setIsLoading(false);
+      requestInFlight.current = false;
+      if (version === requestVersion.current) setIsLoading(false);
     }
   };
 
   // Handle selection of a city
   const handleSelectCity = (result: CityResult) => {
+    requestVersion.current += 1;
+    setIsLoading(false);
+    setSearchError('');
     setInputValue(result.formattedAddress);
     onChange(result.formattedAddress, result.latitude, result.longitude);
     setIsOpen(false);
@@ -185,24 +207,31 @@ const CitySearch: React.FC<CitySearchProps> = ({
             value={inputValue}
             onChange={handleInputChange}
             onFocus={() => results.length > 0 && setIsOpen(true)}
+            aria-label={label}
+            onKeyDown={event => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                searchCity(inputValue);
+              }
+            }}
             placeholder={placeholder}
             className="w-full bg-transparent outline-none text-black placeholder-gray-500"
           />
-          {isLoading ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500"></div>
-          ) : (
-            <svg
-              className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'transform rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          )}
+          <button
+            type="button"
+            onClick={() => searchCity(inputValue)}
+            disabled={isLoading || inputValue.trim().length < 2}
+            className="ml-3 shrink-0 text-sm text-purple-700 disabled:opacity-40"
+          >
+            {isLoading ? (isKorean ? '검색 중…' : 'Searching…') : (isKorean ? '검색' : 'Search')}
+          </button>
         </div>
 
+        <p className="text-white/60 text-xs mt-2">
+          {isKorean ? '도시명 입력 후 검색 · ' : 'Enter a city, then search · '}
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">© OpenStreetMap</a>
+        </p>
+        {searchError && <p role="status" className="text-amber-200 text-xs mt-2">{searchError}</p>}
         {/* Error message */}
         {error && (
           <p className="text-red-500 text-xs mt-1">{error}</p>
@@ -220,14 +249,15 @@ const CitySearch: React.FC<CitySearchProps> = ({
             >
               <div className="max-h-60 overflow-y-auto py-1">
                 {results.map((result, index) => (
-                  <div
+                  <button
+                    type="button"
                     key={index}
                     onClick={() => handleSelectCity(result)}
-                    className="px-4 py-2 cursor-pointer hover:bg-white/20 transition-colors text-black"
+                    className="w-full text-left px-4 py-2 cursor-pointer hover:bg-purple-50 transition-colors text-black"
                   >
                     <div className="font-medium">{result.city}</div>
                     <div className="text-xs text-gray-600">{result.country}</div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </motion.div>

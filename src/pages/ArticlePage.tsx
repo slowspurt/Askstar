@@ -20,32 +20,22 @@ const ArticlePage: React.FC = () => {
 
     const fetchArticle = async () => {
       try {
-        // First try to load from static HTML
-        const staticResponse = await fetch(`/articles/${url}.html`);
-        if (staticResponse.ok) {
-          const htmlContent = await staticResponse.text();
-          setContent(htmlContent);
-          
-          // Extract title from HTML content
-          const titleMatch = htmlContent.match(/<h1[^>]*>([^<]+)<\/h1>/);
-          if (titleMatch) {
-            setTitle(titleMatch[1]);
-          }
-        } else {
-          // Fallback to dynamic API
-          const apiResponse = await fetch(`/api/getArticleContent?url=${encodeURIComponent(url)}`);
-          if (apiResponse.ok) {
-            const apiData = await apiResponse.json();
-            if (apiData.content) {
-              setContent(apiData.content);
-              setTitle(apiData.title || 'Article');
-            } else {
-              throw new Error('아티클 내용을 찾을 수 없습니다.');
-            }
-          } else {
-            throw new Error('아티클을 불러올 수 없습니다.');
-          }
-        }
+        setLoading(true);
+        setError(null);
+        // Only archived articles in the manifest can be opened.
+        const listResponse = await fetch('/data/articles.json');
+        if (!listResponse.ok) throw new Error('아티클 목록을 불러올 수 없습니다.');
+        const { articles } = await listResponse.json();
+        const article = articles.find((item: { url: string; title: string }) => item.url === url);
+        if (!article) throw new Error('아티클을 찾을 수 없습니다.');
+
+        const response = await fetch(`/articles/${encodeURIComponent(url)}.html`);
+        if (!response.ok) throw new Error('아티클을 불러올 수 없습니다.');
+        const document = new DOMParser().parseFromString(await response.text(), 'text/html');
+        // Do not inject a second document head, metadata or scripts into the app.
+        document.querySelectorAll('script, style, link, meta').forEach(element => element.remove());
+        setContent(document.body.innerHTML);
+        setTitle(article.title);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error occurred');
       } finally {

@@ -30,7 +30,8 @@
       "kakaoTitle": "나의 별자리 해석 결과",
       "kakaoDescription": "내 별자리 해석 결과를 확인해보세요!",
       "viewResult": "결과 보기",
-      "tryTest": "테스트 해보기"
+      "tryTest": "테스트 해보기",
+      "linkInfo": "링크를 가진 사람은 이름과 별자리 결과를 볼 수 있어요. 링크는 24시간 동안 유효해요."
     }
   },
   "en": {
@@ -71,7 +72,8 @@
       "backToHome": "Back to Home",
       "tryAgain": "Try Again",
       "compatibility": "View Compatibility 🚧",
-      "share": "Share Results"
+      "share": "Share Results",
+      "linkInfo": "Anyone with the link can view your name and zodiac results. The link is valid for 24 hours."
     }
   }
 }

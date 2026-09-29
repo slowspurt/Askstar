@@ -1,0 +1,7 @@
+.env
+.env.*
+.firebase
+functions
+netlify
+.windsurf
+.vscode

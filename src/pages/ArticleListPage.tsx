@@ -23,21 +23,10 @@ const ArticleListPage: React.FC = () => {
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        // First try to load from static JSON
         const response = await fetch('/data/articles.json');
-        if (response.ok) {
-          const data = await response.json();
-          setArticles(data.articles || data);
-        } else {
-          // Fallback to dynamic API
-          const apiResponse = await fetch('/api/getNewArticles');
-          if (apiResponse.ok) {
-            const apiData = await apiResponse.json();
-            setArticles(apiData.articles || []);
-          } else {
-            throw new Error('Failed to fetch articles');
-          }
-        }
+        if (!response.ok) throw new Error('아티클 목록을 불러올 수 없습니다.');
+        const data = await response.json();
+        setArticles(data.articles || data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error occurred');
       } finally {

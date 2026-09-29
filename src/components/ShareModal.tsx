@@ -47,7 +47,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, shareUrl }) =>
           alert(`${t('shareModal.copyFailed')}\n${url}`);
         }
       }
-    } catch (err) {
+    } catch {
       alert(`${t('shareModal.copyFailed')}\n${url}`);
     }
   };
@@ -96,6 +96,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, shareUrl }) =>
               </button>
             </div>
             
+            <p className="text-sm text-white/70 mb-5 text-center">{t('shareModal.linkInfo')}</p>
             <div className="flex justify-center items-center">
               {shareOptions.map(option => (
                 <button
@@ -116,17 +117,5 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, shareUrl }) =>
     </AnimatePresence>
   );
 };
-
-// 카카오톡 SDK 타입 정의
-declare global {
-  interface Window {
-    Kakao?: {
-      init: (key: string) => void;
-      Link: {
-        sendDefault: (options: any) => void;
-      };
-    };
-  }
-}
 
 export default ShareModal;

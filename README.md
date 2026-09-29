@@ -1,6 +1,8 @@
 # Askstar (별에 묻다) 🌟
 
-## 🔗 [Askstar](https://stariver1119.github.io/Askstar/)
+## Portfolio demo
+
+기존 Askstar 서비스를 Vercel에서 보존·시연하기 위한 버전입니다. `askstar.kr` 도메인이나 Firebase/Notion API 키 없이 빌드할 수 있습니다. 실제 배포 주소는 Vercel 프로젝트 생성 후 정해집니다.
 
 ## Overview | 개요
 Askstar (or "별에 묻다" in Korean, meaning "Ask the Stars") is an interactive astrology service that provides personalized astrological interpretations based on your birth chart. Using the positions of the Sun, Moon, and Ascendant (Rising sign), askstar offers insights into personality traits, emotional tendencies, and how you present yourself to the world.
@@ -64,8 +66,44 @@ Askstar (or "별에 묻다" in Korean, meaning "Ask the Stars") is an interactiv
 - Google Spreadsheet API for data management
 
 ### Deployment | 배포
-- GitHub Pages for hosting
-- Environment variables with dotenv
+- Vercel static hosting: Vite preset, `npm run build`, output `dist`
+- React Router deep links are configured in `vercel.json`
+- No environment variables or external data synchronization are required for the normal build
+- Optional `SITE_URL` sets the canonical origin. Otherwise the build uses Vercel's `VERCEL_PROJECT_PRODUCTION_URL`, then `VERCEL_URL`; local builds use `http://localhost:4173`
+- Keep Vercel's System Environment Variables enabled. Never set a private API key in a `VITE_` variable
+- GitHub import: select this repository and the branch containing these changes; use the Vite defaults above
+- CLI alternative: `npx vercel` for a preview, `npm run deploy` for production
+- Node 22 was used for local verification
+
+### Portfolio behavior
+- Birth-chart calculations run in the browser with `circular-natal-horoscope-js`; interpretations come from bundled Korean/English JSON
+- Daily fortunes select predefined messages and scores using the date as a seed
+- All 15 archived articles are served from `public/`. The regular build does not contact Notion or Google Sheets
+- Sharing uses `/share#...` links containing only the display name, three calculated signs, version and creation time. No birth date, time, city or gender is included. Opening the link needs no database or browser storage; the page treats links as expired after 24 hours
+- The encoded link is readable by anyone who has it, not encrypted or signed. Its expiry is a client-side display rule. Old Firebase IDs cannot be resolved by this static deployment
+- City search still uses OpenStreetMap Nominatim after an explicit search action, with in-session caching and a request interval. Seoul can be selected from bundled coordinates without a network call
+- Nominatim's public service forbids API autocomplete, requires attribution and limits aggregate application traffic to 1 request/second. It is only suitable here for a lightly used demo; a busier deployment needs a different provider or a shared proxy/cache. See [Nominatim policy](https://operations.osmfoundation.org/policies/nominatim/)
+- The old Notion admin screen is removed. Historical Firebase Functions and optional data-update scripts remain in the repository but are not part of the Vercel app
+- The build updates metadata in `dist` only, preserving manually edited source articles. Old GitHub Pages/share files and advertising authorization are excluded from output
+
+### AI/API audit (2026-09-29)
+No runtime AI generation or AI-provider API integration was found in current source, dependency declarations, environment-variable names or the 95 locally available commits. The `Gemini` components represent the zodiac sign, not Google's model. The article about AI is editorial content. Whether the original interpretation text was authored with AI cannot be determined from the repository.
+
+Previous API use: Nominatim for city coordinates; Google Sheets for importing interpretation data; Notion for generating articles; Firebase Functions/Firestore for storing and retrieving shared results. The portfolio build needs none of their credentials; only explicit city searches still use an external API.
+
+### Checks
+```bash
+npm test
+npm run typecheck
+npm run build
+npm run preview -- --host 127.0.0.1 --port 4173
+```
+
+`npm run lint` also checks the historical Firebase code and currently reports pre-existing issues there and in `LoadingPage.tsx`. These do not block the TypeScript or production build.
+
+Optional legacy commands such as `build:fresh`, `build-articles`, `convert-data` and `deploy:firebase` still require their original credentials/services. They are not used by Vercel.
+
+References: [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite), [Vercel system environment variables](https://vercel.com/docs/environment-variables/system-environment-variables).
 
 ## Getting Started | 시작하기
 

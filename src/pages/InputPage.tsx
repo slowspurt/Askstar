@@ -65,7 +65,7 @@ const InputPage = () => {
       const day = parseInt(formData.birthDay);
       
       // Simple date validation
-      if (year < 1900 || year > 2025 || month < 1 || month > 12 || day < 1 || day > 31) {
+      if (year < 1900 || year > new Date().getFullYear() || month < 1 || month > 12 || day < 1 || day > 31) {
         newErrors.birthDate = t('input.error.invalidDate');
         invalidFields.birthDate = true;
       }
@@ -305,6 +305,7 @@ const InputPage = () => {
                         <input
                           type="text"
                           name="name"
+                          maxLength={100}
                           value={formData.name}
                           onChange={handleInputChange}
                           placeholder={t('input.name.placeholder')}
@@ -355,7 +356,7 @@ const InputPage = () => {
                           onChange={handleInputChange}
                           placeholder={t('input.birthDate.year')}
                           min="1900"
-                          max="2025"
+                          max={new Date().getFullYear()}
                           className={`w-full bg-white backdrop-blur-md border rounded-lg px-3 py-2 text-black focus:outline-none focus:border-white/30 transition-colors`}
                         />
                         {/* Separator */}
@@ -433,7 +434,10 @@ const InputPage = () => {
                       value={formData.city}
                       onChange={handleCitySelect}
                       error={cityAttempted && errors.city ? errors.city : undefined}
-                      onInputChange={() => setCityAttempted(true)}
+                      onInputChange={() => {
+                        setCityAttempted(true);
+                        setFormData(previous => ({ ...previous, city: '' }));
+                      }}
                       icon={
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>

@@ -1,52 +1,21 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from '../hooks/useTranslation';
 import shareTranslations from '../data/sharePageTranslations.json';
 import StarryBackground from '../components/common/StarryBackground';
 import SharedInterpretationCard from '../components/SharedInterpretationCard';
-import { getShareableResultById } from '../utils/shareUtils';
-import type { ShareableResult } from '../utils/shareUtils';
+import { readShareUrl } from '../utils/shareUtils';
+import interpretationsEn from '../data/interpretations_en.json';
+import interpretationsKo from '../data/interpretations_ko.json';
 import type { ZodiacSign } from '../components/ZodiacIcon';
 
 // ZodiacType 타입 정의
 type ZodiacType = 'sun' | 'moon' | 'rising';
 
 const SharePage = () => {
-  const { resultId } = useParams<{ resultId: string }>();
+  const { hash } = useLocation();
   const { currentLanguage } = useTranslation();
-  const [sharedResult, setSharedResult] = useState<ShareableResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // 결과 로드
-  useEffect(() => {
-    const loadResult = async () => {
-      if (!resultId) {
-        setError('Invalid result ID');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const result = await getShareableResultById(resultId);
-        if (!result) {
-          setError('Result not found or expired');
-          setLoading(false);
-          return;
-        }
-
-        setSharedResult(result);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading shared result:', error);
-        setError('Failed to load result');
-        setLoading(false);
-      }
-    };
-
-    loadResult();
-  }, [resultId]);
+  const sharedResult = readShareUrl(hash);
 
   // 별자리 이름 가져오기
   const getZodiacName = (sign: ZodiacSign): string => {
@@ -71,7 +40,7 @@ const SharePage = () => {
   // 공유 페이지 번역 가져오기
   const getShareTranslation = (key: string): string => {
     const translations = shareTranslations[currentLanguage as keyof typeof shareTranslations] || shareTranslations.en;
-    return (translations as any)[key] || '';
+    return translations[key as keyof typeof translations] || '';
   };
   
   // 별자리 설명 가져오기
@@ -96,19 +65,8 @@ const SharePage = () => {
     return getShareTranslation(titleKeys[type]);
   };
 
-  // 테스트 시작 핸들러는 더 이상 필요하지 않음
-
-  // 로딩 중
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-purple-900">
-        <p className="text-white">Loading...</p>
-      </div>
-    );
-  }
-
   // 에러 발생
-  if (error || !sharedResult) {
+  if (!sharedResult) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-purple-900 p-6 text-center">
         <h1 className="text-2xl text-white mb-6">{getShareTranslation('expired')}</h1>
@@ -118,6 +76,14 @@ const SharePage = () => {
       </div>
     );
   }
+
+  const data = (currentLanguage === 'ko' ? interpretationsKo : interpretationsEn)
+    .basic_interpretations;
+  const summaries = {
+    sun: (data.sun as Record<string, string>)[getZodiacName(sharedResult.userData.sunSign)],
+    moon: (data.moon as Record<string, string>)[getZodiacName(sharedResult.userData.moonSign)],
+    rising: (data.ascendant as Record<string, string>)[getZodiacName(sharedResult.userData.risingSign)]
+  };
 
   return (
     <StarryBackground scrollable={true}>
@@ -149,7 +115,7 @@ const SharePage = () => {
               signName={getZodiacName(sharedResult.userData.sunSign)}
               description={getZodiacDescription('sun')}
               title={getZodiacTypeTitle('sun')}
-              summary={sharedResult.interpretations.sun}
+              summary={summaries.sun}
               delay={0.3}
             />
             
@@ -159,7 +125,7 @@ const SharePage = () => {
               signName={getZodiacName(sharedResult.userData.moonSign)}
               description={getZodiacDescription('moon')}
               title={getZodiacTypeTitle('moon')}
-              summary={sharedResult.interpretations.moon}
+              summary={summaries.moon}
               delay={0.5}
             />
             
@@ -169,7 +135,7 @@ const SharePage = () => {
               signName={getZodiacName(sharedResult.userData.risingSign)}
               description={getZodiacDescription('rising')}
               title={getZodiacTypeTitle('rising')}
-              summary={sharedResult.interpretations.rising}
+              summary={summaries.rising}
               delay={0.7}
             />
           </div>
